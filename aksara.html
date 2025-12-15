@@ -279,6 +279,14 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
         "": "a",
       };
 
+      const VOKAL_MANDIRI_LATIN = {
+        "ꦄ": "a",
+        "ꦆ": "i",
+        "ꦈ": "u",
+        "ꦌ": "e",
+        "ꦎ": "o",
+      };
+
       const AKHIRAN_LATIN = {
         "ꦁ": "ng",
         "ꦂ": "r",
@@ -456,48 +464,83 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
         while (i < text.length) {
           const ch = text[i];
 
-          // spasi / simbol
-          if (!AKSARA_LATIN[ch] && !MURDA_LATIN[ch]) {
+          // Handle vowel mandiri (standalone vowels)
+          if (VOKAL_MANDIRI_LATIN[ch]) {
+            result += VOKAL_MANDIRI_LATIN[ch];
+            i++;
+            continue;
+          }
+
+          // Handle spaces and symbols
+          if (!AKSARA_LATIN[ch] && !MURDA_LATIN[ch] && !AKHIRAN_LATIN[ch]) {
             result += ch;
             i++;
             continue;
           }
 
-          // aksara utama
-          let latin = MURDA_LATIN[ch] || AKSARA_LATIN[ch];
-          i++;
+          // Process consonant + possible modifiers as a single unit
+          let base = AKSARA_LATIN[ch] || MURDA_LATIN[ch];
+          if (base) {
+            i++; // consume the consonant
 
-          // cluster
-          if (CLUSTER_LATIN[text[i]]) {
-            latin += CLUSTER_LATIN[text[i]];
+            // Check for clusters that follow this consonant
+            if (i < text.length && CLUSTER_LATIN[text[i]]) {
+              base += CLUSTER_LATIN[text[i]];
+              i++;
+            }
+
+            // Check what comes after the base consonant
+            let vowel = 'a'; // default vowel
+            let coda = ''; // ending consonant
+
+            // Check for pangkon (indicates no vowel)
+            if (i < text.length && text[i] === PANGKON) {
+              vowel = ''; // no vowel for this base
+              i++; // consume pangkon
+
+              // After pangkon, check for ending consonant
+              if (i < text.length && AKHIRAN_LATIN[text[i]]) {
+                coda = AKHIRAN_LATIN[text[i]];
+                i++;
+              }
+
+              // Add to result immediately since vowel is suppressed
+              result += base + coda;
+              continue;
+            }
+
+            // No pangkon, so process vowels and ending consonants
+            // First, carefully check for 2-character vowel markers (like "ꦺꦴ" for "o")
+            if (i < text.length) {
+              if (i + 1 < text.length && VOKAL_LATIN[text.slice(i, i + 2)]) {
+                vowel = VOKAL_LATIN[text.slice(i, i + 2)]; // This gets "o" from "ꦺꦴ"
+                i += 2; // consume both characters
+              }
+              // Then check for 1-character vowel markers
+              else if (VOKAL_LATIN[text[i]]) {
+                vowel = VOKAL_LATIN[text[i]];
+                i++; // consume one character
+              }
+              // If no vowel marker but there's an ending consonant, apply it without vowel
+              else if (AKHIRAN_LATIN[text[i]]) {
+                coda = AKHIRAN_LATIN[text[i]];
+                vowel = ''; // no vowel when only coda
+                i++; // consume the ending consonant
+              }
+            }
+
+            // After handling vowels, check again for ending consonants if we had a vowel
+            if (vowel && i < text.length && AKHIRAN_LATIN[text[i]]) {
+              coda = AKHIRAN_LATIN[text[i]];
+              i++; // consume the ending consonant
+            }
+
+            result += base + vowel + coda;
+          } else if (AKHIRAN_LATIN[ch]) {
+            // Handle standalone ending consonants
+            result += AKHIRAN_LATIN[ch] + 'a';
             i++;
           }
-
-          // default vokal
-          let vowel = "a";
-
-          // sandhangan vokal (2 char dulu)
-          if (VOKAL_LATIN[text.slice(i, i + 2)]) {
-            vowel = VOKAL_LATIN[text.slice(i, i + 2)];
-            i += 2;
-          } else if (VOKAL_LATIN[text[i]]) {
-            vowel = VOKAL_LATIN[text[i]];
-            i++;
-          }
-
-          // pangkon = MATIKAN vokal
-          if (text[i] === PANGKON) {
-            vowel = "";
-            i++;
-          }
-
-          // akhiran HARUS LANGSUNG NEMPEL
-          if (AKHIRAN_LATIN[text[i]]) {
-            latin += AKHIRAN_LATIN[text[i]];
-            i++;
-          }
-
-          result += latin + vowel;
         }
 
         return result;
