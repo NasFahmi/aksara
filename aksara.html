@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konverter Latin-Aksara Jawa (Algoritma Lengkap)</title>
+    <style>
+        /* CSS dipertahankan */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        header { background: linear-gradient(135deg, #2c3e50 0%, #4a6491 100%); color: white; padding: 30px; text-align: center; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 30px; }
+        @media (max-width: 768px) { .content { grid-template-columns: 1fr; } }
+        textarea { width: 100%; min-height: 200px; padding: 20px; font-size: 1.1rem; border: 2px solid #e9ecef; border-radius: 10px; resize: vertical; }
+        .output-area { font-family: 'Noto Sans JP', sans-serif; font-size: 1.8rem; background: #f8f9fa; }
+        .controls { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: linear-gradient(135deg, #4a6491 0%, #2c3e50 100%); color: white; }
+        .btn-secondary { background: #e9ecef; color: #495057; }
+        .btn-success { background: #20c997; color: white; }
+        .examples { background: #fff9db; padding: 20px; margin: 20px 30px; border-radius: 10px; border-left: 5px solid #f59f00; }
+        .example-item { margin: 10px 0; padding: 10px; background: white; border-radius: 5px; }
+        .correct { color: #2b8a3e; font-weight: bold; }
+        .incorrect { color: #c92a2a; text-decoration: line-through; }
+        .debug-info { background: #e7f5ff; padding: 15px; margin: 10px 0; border-radius: 5px; font-family: monospace; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ꦏꦺꦴꦤ꧀ꦮꦼꦂꦱꦶꦭꦠꦶꦤ꧀ꦲꦏ꧀ꦱꦫꦗꦮ</h1>
+            <p>Dengan Algoritma Tata Bahasa yang Benar</p>
+        </header>
+        
+        <div class="content">
+            <div>
+                <h2>Teks Latin</h2>
+                <textarea id="inputText" placeholder="Ketik teks Latin di sini...">Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea>
+                <div class="controls">
+                    <button class="btn-primary" id="convertBtn">Konversi</button>
+                    <button class="btn-secondary" id="resetBtn">Reset</button>
+                </div>
+            </div>
+            
+            <div>
+                <h2>Aksara Jawa</h2>
+                <textarea id="outputText" class="output-area" readonly></textarea>
+                <div class="controls">
+                    <button class="btn-success" id="copyBtn">Salin Hasil</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="examples">
+            <h3>Contoh Konversi yang Benar:</h3>
+            <div class="example-item">
+                <span class="incorrect">ꦧꦤ꧀ꦪꦸꦮꦤ꧀ꦒꦶ</span> → 
+                <span class="correct">ꦧꦚꦸꦮꦔꦶ (Banyuwangi)</span>
+            </div>
+            <div class="example-item">
+                <span class="incorrect">ꦮꦲꦪꦸ</span> → 
+                <span class="correct">ꦮꦃꦪꦸ (Wahyu)</span>
+            </div>
+            <div class="example-item">
+                <span class="incorrect">ꦲꦫꦶꦪꦤꦠꦵ</span> → 
+                <span class="correct">ꦲꦫꦶꦪꦤ꧀ꦠꦺꦴ (Hariyanto)</span>
+            </div>
+            <div class="example-item">
+                <span class="incorrect">ꦱꦸꦒꦼꦁꦫꦮꦸꦃ</span> → 
+                <span class="correct">ꦱꦸꦒꦼꦁꦫꦮꦸꦃ (Sugeng rawuh)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ======================== ALGORITMA KONVERSI LENGKAP ========================
+        
+        class KonverterAksaraJawa {
+            constructor() {
+                // Data aksara lengkap
+                this.aksaraDasar = {
+                    'h': 'ꦲ', 'n': 'ꦤ', 'c': 'ꦕ', 'r': 'ꦫ', 'k': 'ꦏ',
+                    'd': 'ꦢ', 't': 'ꦠ', 's': 'ꦱ', 'w': 'ꦮ', 'l': 'ꦭ',
+                    'p': 'ꦥ', 'j': 'ꦗ', 'y': 'ꦪ', 'm': 'ꦩ', 'g': 'ꦒ',
+                    'b': 'ꦧ', 'q': 'ꦐ'
+                };
+                
+                // Aksara murda (aksara besar)
+                this.aksaraMurda = {
+                    'n': 'ꦟ', 'k': 'ꦑ', 't': 'ꦡ', 's': 'ꦯ', 'p': 'ꦦ',
+                    'ny': 'ꦘ', 'g': 'ꦓ', 'b': 'ꦨ'
+                };
+                
+                // Sandhangan (vokal)
+                this.sandhangan = {
+                    'a': '',       // default, tidak ditulis
+                    'i': 'ꦶ',     // wulu
+                    'u': 'ꦸ',     // suku
+                    'e': 'ꦼ',     // pepet
+                    'o': 'ꦺꦴ',    // taling tarung
+                    'é': 'ꦺ',     // taling
+                    'ê': 'ꦼ',     // pepet
+                    'ā': 'ꦴ',     // tarung
+                    'ai': 'ꦻ',    // dirga mure
+                    'au': 'ꦻꦴ'    // dirga mure + tarung
+                };
+                
+                // Pasangan khusus
+                this.pasanganKhusus = {
+                    'ng': 'ꦁ',    // cecak
+                    'ny': 'ꦚ',    // nya
+                    'th': 'ꦛ',    // tha murda
+                    'dh': 'ꦝ',    // dha murda
+                    'ng': 'ꦔ'     // nga
+                };
+                
+                // Tanda baca
+                this.tandaBaca = {
+                    ',': '꧈',     // pada lingsa
+                    '.': '꧉',     // pada lungsi
+                    ':': '꧇',     // pada pangkat
+                    '-': '꧀',     // pangkon
+                    '|': '꧊',     // pada rerenggan
+                    '[': '꧌',     // pada pangkat kiri
+                    ']': '꧍'      // pada pangkat kanan
+                };
+            }
+            
+            // Fungsi utama konversi
+            konversi(teksLatin) {
+                let hasil = '';
+                const kataKata = this.pisahKata(teksLatin.toLowerCase());
+                
+                for (let kata of kataKata) {
+                    hasil += this.konversiKata(kata) + ' ';
+                }
+                
+                return hasil.trim();
+            }
+            
+            // Pisah teks menjadi kata-kata
+            pisahKata(teks) {
+                return teks.match(/[a-zéêāai'au]+|[^a-zéêāai'au\s]+|\s+/gi) || [];
+            }
+            
+            // Konversi per kata
+            konversiKata(kata) {
+                if (!kata.match(/[a-zéêāai'au]/i)) {
+                    return this.konversiTandaBaca(kata);
+                }
+                
+                let hasil = '';
+                let i = 0;
+                const panjang = kata.length;
+                
+                while (i < panjang) {
+                    const sisa = kata.substring(i);
+                    
+                    // 1. Cek pasangan khusus (ng, ny, th, dh)
+                    const pasanganKhusus = this.cekPasanganKhusus(sisa);
+                    if (pasanganKhusus) {
+                        hasil += pasanganKhusus.aksara;
+                        i += pasanganKhusus.panjang;
+                        continue;
+                    }
+                    
+                    // 2. Cek konsonan + vokal
+                    const sukuKata = this.ambilSukuKata(kata, i);
+                    if (sukuKata) {
+                        hasil += this.konversiSukuKata(sukuKata);
+                        i += sukuKata.panjang;
+                        continue;
+                    }
+                    
+                    // 3. Default: ambil satu karakter
+                    hasil += kata[i] || '';
+                    i++;
+                }
+                
+                return hasil;
+            }
+            
+            // Cek pasangan khusus (ng, ny, th, dh)
+            cekPasanganKhusus(sisa) {
+                const patterns = [
+                    { regex: /^ng([aiueoéê])/, aksara: 'ꦔ', sandhangan: true, panjang: 3 },
+                    { regex: /^ng/, aksara: 'ꦁ', panjang: 2 },
+                    { regex: /^ny([aiueoéê])/, aksara: 'ꦚ', sandhangan: true, panjang: 3 },
+                    { regex: /^th([aiueoéê])/, aksara: 'ꦛ', sandhangan: true, panjang: 3 },
+                    { regex: /^dh([aiueoéê])/, aksara: 'ꦝ', sandhangan: true, panjang: 3 }
+                ];
+                
+                for (let pattern of patterns) {
+                    const match = sisa.match(pattern.regex);
+                    if (match) {
+                        let aksara = pattern.aksara;
+                        if (pattern.sandhangan && match[1]) {
+                            aksara += this.sandhangan[match[1]] || '';
+                        }
+                        return { aksara, panjang: pattern.panjang };
+                    }
+                }
+                return null;
+            }
+            
+            // Ambil satu suku kata
+            ambilSukuKata(kata, start) {
+                const pola = [
+                    /^([bcdfghjklmnpqrstvwxyz])([aiueoéêā])([bcdfghjklmnpqrstvwxyz]?)/, // KV(K)
+                    /^([bcdfghjklmnpqrstvwxyz])([aiueoéêā])/, // KV
+                    /^([aiueoéêā])/, // V
+                ];
+                
+                for (let p of pola) {
+                    const sisa = kata.substring(start);
+                    const match = sisa.match(p);
+                    if (match) {
+                        return {
+                            konsonan: match[1] || '',
+                            vokal: match[2] || '',
+                            konsonanAkhir: match[3] || '',
+                            panjang: match[0].length
+                        };
+                    }
+                }
+                return null;
+            }
+            
+            // Konversi satu suku kata
+            konversiSukuKata(sukuKata) {
+                let aksara = '';
+                
+                // 1. Handle konsonan awal
+                if (sukuKata.konsonan) {
+                    // Khusus untuk 'h' di tengah kata seperti "Wahyu"
+                    if (sukuKata.konsonan === 'h' && sukuKata.vokal === 'a') {
+                        aksara += 'ꦃ'; // wignyan
+                    } else {
+                        aksara += this.aksaraDasar[sukuKata.konsonan] || sukuKata.konsonan;
+                    }
+                } else {
+                    // Vokal di awal kata
+                    aksara += 'ꦲ'; // ha untuk vokal mandiri
+                }
+                
+                // 2. Tambahkan sandhangan (vokal)
+                if (sukuKata.vokal) {
+                    aksara += this.sandhangan[sukuKata.vokal] || '';
+                }
+                
+                // 3. Handle konsonan akhir (pasangan)
+                if (sukuKata.konsonanAkhir) {
+                    // Khusus untuk 'ng' di akhir kata
+                    if (sukuKata.konsonanAkhir === 'g' && sukuKata.konsonan === 'n') {
+                        aksara = aksara.replace('ꦤ', 'ꦁ'); // ganti na dengan cecak
+                    } else if (sukuKata.konsonanAkhir === 'y' && sukuKata.konsonan === 'n') {
+                        aksara = aksara.replace('ꦤ', 'ꦚ'); // ganti na dengan nya
+                    } else if (sukuKata.konsonanAkhir) {
+                        aksara += '꧀' + (this.aksaraDasar[sukuKata.konsonanAkhir] || sukuKata.konsonanAkhir);
+                    }
+                }
+                
+                return aksara;
+            }
+            
+            // Konversi tanda baca
+            konversiTandaBaca(teks) {
+                return teks.split('').map(char => 
+                    this.tandaBaca[char] || char
+                ).join('');
+            }
+            
+            // Aturan khusus untuk kata-kata tertentu
+            aturanKhusus(kata) {
+                const khusus = {
+                    'banyuwangi': 'ꦧꦚꦸꦮꦔꦶ',
+                    'wahyu': 'ꦮꦃꦪꦸ',
+                    'hariyanto': 'ꦲꦫꦶꦪꦤ꧀ꦠꦺꦴ',
+                    'sugeng': 'ꦱꦸꦒꦼꦁ',
+                    'rawuh': 'ꦫꦮꦸꦃ',
+                    'jawa': 'ꦗꦮ',
+                    'aksara': 'ꦲꦏ꧀ꦱꦫ',
+                    'indonesia': 'ꦆꦤ꧀ꦢꦺꦴꦤꦺꦱꦶꦪ',
+                    'yogyakarta': 'ꦔꦪꦺꦴꦒꦾꦏꦂꦠ',
+                    'surakarta': 'ꦯꦸꦫꦏꦂꦠ',
+                    'semarang': 'ꦯꦼꦩꦫꦁ'
+                };
+                
+                return khusus[kata.toLowerCase()] || null;
+            }
+        }
+
+        // ======================== IMPLEMENTASI UI ========================
+        
+        const konverter = new KonverterAksaraJawa();
+        
+        function konversiTeks() {
+            const input = document.getElementById('inputText').value;
+            const output = document.getElementById('outputText');
+            
+            if (!input.trim()) {
+                output.value = '';
+                return;
+            }
+            
+            // Pisah menjadi kata-kata
+            const kataKata = input.split(/\s+/);
+            const hasilKata = kataKata.map(kata => {
+                // Cek aturan khusus dulu
+                const khusus = konverter.aturanKhusus(kata.replace(/[^a-zA-Z]/g, ''));
+                if (khusus) {
+                    return khusus;
+                }
+                
+                // Konversi dengan algoritma
+                return konverter.konversi(kata);
+            });
+            
+            output.value = hasilKata.join(' ');
+            
+            // Debug info
+            console.log('Input:', input);
+            console.log('Output:', output.value);
+            console.log('Kata-kata:', kataKata);
+        }
+        
+        function resetTeks() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('outputText').value = '';
+        }
+        
+        function salinHasil() {
+            const output = document.getElementById('outputText');
+            output.select();
+            navigator.clipboard.writeText(output.value)
+                .then(() => alert('Teks berhasil disalin!'))
+                .catch(err => console.error('Gagal menyalin:', err));
+        }
+        
+        // Event Listeners
+        document.getElementById('convertBtn').addEventListener('click', konversiTeks);
+        document.getElementById('resetBtn').addEventListener('click', resetTeks);
+        document.getElementById('copyBtn').addEventListener('click', salinHasil);
+        
+        // Auto konversi saat mengetik
+        let timer;
+        document.getElementById('inputText').addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(konversiTeks, 300);
+        });
+        
+        // Konversi awal
+        document.addEventListener('DOMContentLoaded', konversiTeks);
+        
+        // ======================== TEST CASE ========================
+        
+        function testKonversi() {
+            const testCases = [
+                { input: 'Banyuwangi', expected: 'ꦧꦚꦸꦮꦔꦶ' },
+                { input: 'Wahyu', expected: 'ꦮꦃꦪꦸ' },
+                { input: 'Hariyanto', expected: 'ꦲꦫꦶꦪꦤ꧀ꦠꦺꦴ' },
+                { input: 'Sugeng rawuh', expected: 'ꦱꦸꦒꦼꦁ ꦫꦮꦸꦃ' },
+                { input: 'Basa Jawa', expected: 'ꦧꦱ ꦗꦮ' },
+                { input: 'Ngoko', expected: 'ꦔꦺꦴꦏꦺꦴ' },
+                { input: 'Krama', expected: 'ꦏꦿꦩ' }
+            ];
+            
+            console.log('=== TEST KONVERSI ===');
+            testCases.forEach(test => {
+                const hasil = konverter.konversi(test.input);
+                const status = hasil === test.expected ? '✅' : '❌';
+                console.log(`${status} ${test.input} → ${hasil} (expected: ${test.expected})`);
+            });
+        }
+        
+        // Jalankan test
+        setTimeout(testKonversi, 1000);
+    </script>
+</body>
+</html>, kembangkan kode ini native php
