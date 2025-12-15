@@ -85,6 +85,10 @@
         background: #20c997;
         color: white;
       }
+      .btn-warning {
+        background: #fab005;
+        color: #212529;
+      }
       .examples {
         background: #fff9db;
         padding: 20px;
@@ -133,8 +137,10 @@
 Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
           >
           <div class="controls">
-            <button class="btn-primary" id="convertBtn">Konversi</button>
-            <button class="btn-secondary" id="resetBtn">Reset</button>
+            <button class="btn-primary" id="convertToJavaneseBtn">
+              Konversi (Latin → Aksara)
+            </button>
+            <button class="btn-secondary" id="resetAllBtn">Reset Semua</button>
           </div>
         </div>
 
@@ -143,6 +149,10 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
           <textarea id="outputText" class="output-area" readonly></textarea>
           <div class="controls">
             <button class="btn-success" id="copyBtn">Salin Hasil</button>
+            <!-- Tombol Konversi Aksara ke Latin -->
+            <button class="btn-warning" id="convertToLatinBtn">
+              Konversi (Aksara → Latin)
+            </button>
           </div>
         </div>
       </div>
@@ -276,15 +286,16 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
         "ꦼ": "e",
         "ꦺꦴ": "o",
         "ꦺ": "é",
-        "": "a",
+        "": "a", // Vokal default untuk konsonan tanpa sandhangan
+        "ꦻ": "ai",
       };
 
       const VOKAL_MANDIRI_LATIN = {
-        "ꦄ": "a",
-        "ꦆ": "i",
-        "ꦈ": "u",
-        "ꦌ": "e",
-        "ꦎ": "o",
+        ꦄ: "a",
+        ꦆ: "i",
+        ꦈ: "u",
+        ꦌ: "e",
+        ꦎ: "o",
       };
 
       const AKHIRAN_LATIN = {
@@ -296,6 +307,8 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
       const CLUSTER_LATIN = {
         "ꦿ": "r",
         "ꦾ": "y",
+        // 'ꦭꦾ' adalah dua karakter 'ꦭ' dan 'ꦾ' yang mewakili cluster 'l'
+        // Kita tangani ini secara khusus dalam fungsi
       };
 
       const PANGKON = "꧀";
@@ -457,6 +470,7 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
         return render(syllables);
       }
 
+      // --- Fungsi Konversi Aksara Jawa ke Latin ---
       function jawaToLatin(text) {
         let result = "";
         let i = 0;
@@ -472,7 +486,14 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
           }
 
           // Handle spaces and symbols
-          if (!AKSARA_LATIN[ch] && !MURDA_LATIN[ch] && !AKHIRAN_LATIN[ch]) {
+          if (
+            !AKSARA_LATIN[ch] &&
+            !MURDA_LATIN[ch] &&
+            !AKHIRAN_LATIN[ch] &&
+            ch !== PANGKON &&
+            !VOKAL_LATIN[ch] &&
+            !CLUSTER_LATIN[ch]
+          ) {
             result += ch;
             i++;
             continue;
@@ -484,32 +505,59 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
             i++; // consume the consonant
 
             // Check for clusters that follow this consonant
-            if (i < text.length && CLUSTER_LATIN[text[i]]) {
+            // Special case for 'l' cluster: 'ꦭ' followed by 'ꦾ'
+            if (
+              ch in AKSARA_LATIN &&
+              i < text.length &&
+              text[i] === "ꦭ" &&
+              i + 1 < text.length &&
+              text[i + 1] === "ꦾ"
+            ) {
+              // This represents the 'l' cluster as defined by CLUSTER.l = 'ꦭꦾ'
+              base += "l"; // In latinToJawa, cluster 'l' was represented by adding 'l' then 'y' after onset
+              // So in reverse, 'onset' + 'ꦭ' + 'ꦾ' -> 'onset' + 'l(y_as_cluster)'
+              // We add 'l' to represent the cluster itself, and assume 'y' is part of its definition.
+              // Actually, looking back: CLUSTER['l'] = 'ꦭꦾ'. So onset=g, cluster=l -> g + (ꦭ + ା).
+              // In latin, g + l(cluster) + a -> 'gla'.
+              // So when we see 'onset_char' + ' lavender_char ' + 'yellow_char ', it's onset + cluster_l.
+              // In latin: onset + 'l' (as cluster identifier) + vowel_default_if_any.
+              // So, ' lavender_char ' + 'yellow_char ' should map back to 'l'.
+              // Let's correct the logic.
+              if (
+                text[i] === " lavender_char " &&
+                text[i + 1] === "yellow_char "
+              ) {
+                // Use actual characters
+                base += "l"; // Represent the 'l' cluster
+                i += 2; // Consume both ' lavender_char ' and 'yellow_char '
+              } else if (CLUSTER_LATIN[text[i]]) {
+                base += CLUSTER_LATIN[text[i]];
+                i++;
+              }
+            } else if (CLUSTER_LATIN[text[i]]) {
               base += CLUSTER_LATIN[text[i]];
               i++;
             }
 
-            // Check what comes after the base consonant
-            let vowel = 'a'; // default vowel
-            let coda = ''; // ending consonant
+            // Check what comes after the base consonant + cluster
+            let vowel = "a"; // default vowel
+            let coda = ""; // ending consonant
 
-            // Check for pangkon (indicates no vowel)
+            // Check for pangkon (indicates no vowel for preceding onset/cluster)
             if (i < text.length && text[i] === PANGKON) {
-              vowel = ''; // no vowel for this base
-              i++; // consume pangkon
-
-              // After pangkon, check for ending consonant
+              // The vowel for the current onset+cluster is suppressed.
+              // Next, check if there's an explicit ending consonant (coda) like 'ng', 'r', 'h'
+              i++; // consume pangkon first
               if (i < text.length && AKHIRAN_LATIN[text[i]]) {
                 coda = AKHIRAN_LATIN[text[i]];
-                i++;
+                i++; // consume the coda character
               }
-
-              // Add to result immediately since vowel is suppressed
+              // Append base (which might include cluster) and coda, no default vowel 'a'
               result += base + coda;
-              continue;
+              continue; // Move to next iteration after handling pangkon+coda
             }
 
-            // No pangkon, so process vowels and ending consonants
+            // No pangkon, so process vowels and ending consonants normally
             // First, carefully check for 2-character vowel markers (like "ꦺꦴ" for "o")
             if (i < text.length) {
               if (i + 1 < text.length && VOKAL_LATIN[text.slice(i, i + 2)]) {
@@ -521,24 +569,33 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
                 vowel = VOKAL_LATIN[text[i]];
                 i++; // consume one character
               }
-              // If no vowel marker but there's an ending consonant, apply it without vowel
-              else if (AKHIRAN_LATIN[text[i]]) {
-                coda = AKHIRAN_LATIN[text[i]];
-                vowel = ''; // no vowel when only coda
-                i++; // consume the ending consonant
-              }
+              // Check for ending consonants (only if no vowel was found yet or we want to attach it anyway)
+              // Ending consonants usually come after vowels, so let's re-order slightly.
+              // After vowel is processed, check for ending.
             }
 
-            // After handling vowels, check again for ending consonants if we had a vowel
-            if (vowel && i < text.length && AKHIRAN_LATIN[text[i]]) {
+            // After handling potential vowel, check for ending consonant (coda)
+            if (i < text.length && AKHIRAN_LATIN[text[i]]) {
               coda = AKHIRAN_LATIN[text[i]];
               i++; // consume the ending consonant
             }
 
             result += base + vowel + coda;
           } else if (AKHIRAN_LATIN[ch]) {
-            // Handle standalone ending consonants
-            result += AKHIRAN_LATIN[ch] + 'a';
+            // Handle standalone ending consonants (should ideally not occur in isolation)
+            // For now, append default vowel 'a'
+            result += AKHIRAN_LATIN[ch] + "a";
+            i++;
+          } else {
+            // Handle other characters like pangkon if it appears unexpectedly alone
+            if (ch === PANGKON) {
+              // A standalone pangkon doesn't make sense, ignore or log?
+              // For now, just skip it.
+              i++;
+              continue;
+            }
+            // If character matches no rule, add as-is (shouldn't happen with clean input)
+            result += ch;
             i++;
           }
         }
@@ -546,6 +603,46 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
         return result;
       }
 
+      // --- Event Listeners ---
+      document.addEventListener("DOMContentLoaded", () => {
+        const inputTextElement = document.getElementById("inputText");
+        const outputTextElement = document.getElementById("outputText");
+        const convertToJavaneseBtn = document.getElementById(
+          "convertToJavaneseBtn"
+        );
+        const convertToLatinBtn = document.getElementById("convertToLatinBtn"); // New button
+        const copyBtn = document.getElementById("copyBtn");
+        const resetAllBtn = document.getElementById("resetAllBtn");
+
+        // Konversi Latin ke Aksara
+        convertToJavaneseBtn.addEventListener("click", () => {
+          const input = inputTextElement.value;
+          const converted = latinToJawa(input);
+          outputTextElement.value = converted;
+        });
+
+        // Konversi Aksara ke Latin
+        convertToLatinBtn.addEventListener("click", () => {
+          const input = outputTextElement.value; // Read from Aksara area
+          const converted = jawaToLatin(input);
+          inputTextElement.value = converted; // Write to Latin area
+        });
+
+        // Salin hasil Aksara
+        copyBtn.addEventListener("click", () => {
+          outputTextElement.select();
+          document.execCommand("copy");
+          alert("Hasil Aksara Jawa disalin!");
+        });
+
+        // Reset semua textarea
+        resetAllBtn.addEventListener("click", () => {
+          inputTextElement.value = "";
+          outputTextElement.value = "";
+        });
+      });
+
+      // --- Testing ---
       console.log("test aksara");
 
       console.log(latinToJawa("banyuwangi"));
@@ -574,7 +671,7 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
       console.log(latinToJawa("kri")); // ꦏꦿꦶ
       console.log(latinToJawa("kya")); // ꦏꦾ
       console.log(latinToJawa("gla")); // ꦒꦭꦾ
-      console.log(latinToJawa("dwa")); // ꦢꦿꦮ
+      console.log(latinToJawa("dwa")); // ꦢꦿꦮ (Catatan: Sesuai logika, ini adalah d-w-a, bukan d-r-a-w)
       console.log(latinToJawa("sugeng rawuh"));
 
       console.log("test murda");
@@ -597,6 +694,7 @@ Banyuwangi, Wahyu Hariyanto, Sugeng rawuh</textarea
       console.log(jawaToLatin("ꦱꦸꦒꦼꦁ ꦫꦮꦸꦃ")); // sugeng rawuh
       console.log(jawaToLatin("ꦏꦿꦶ")); // kri
       console.log(jawaToLatin("ꦧꦤ꧀ꦠ")); // bant
+      console.log(jawaToLatin("ꦱꦪ ꦤꦻꦏ꧀ ꦏꦸꦢ ꦢꦶ ꦗꦺꦴꦒ꧀ꦗ")); // saya naik kuda di jawa
     </script>
   </body>
 </html>
